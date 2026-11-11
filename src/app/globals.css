@@ -52,10 +52,11 @@ html[data-scroll-behavior="smooth"] {
   font-display: swap;
 }
 
-/* Theme variables - locked to light */
+/* Theme variables - the site is designed dark (black / #1b1b1b / yellow-400).
+   Any gap between sections must show black, never white. */
 :root {
-  --background: #ffffff;   /* light background */
-  --foreground: #171717;   /* dark text */
+  --background: #000000;
+  --foreground: #ededed;
 }
 
 @theme inline {
@@ -69,7 +70,10 @@ html[data-scroll-behavior="smooth"] {
   --font-basement: 'Basement Grotesque', sans-serif;
 }
 
-/* Removed dark mode override so site stays light */
+html {
+  background: #000000;
+  color-scheme: dark;
+}
 
 /* Base styles */
 body {
@@ -108,12 +112,12 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 }
 
 ::-webkit-scrollbar-track {
-  background: #909296; /* light gray track */
+  background: #0a0a0a;
   border-radius: 5px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.2); /* darker thumb */
+  background: rgba(255, 255, 255, 0.2);
   border-radius: 5px;
   border: 2px solid transparent;
   background-clip: padding-box;
@@ -132,11 +136,11 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 /* Firefox */
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(0, 0, 0, 0.2) #f3f4f6;
+  scrollbar-color: rgba(255, 255, 255, 0.2) #0a0a0a;
 }
 
 *:hover {
-  scrollbar-color: #facc15 #f3f4f6;
+  scrollbar-color: rgba(250, 204, 21, 0.6) #0a0a0a;
 }
 
 /* Hide scrollbar for tab scroller */

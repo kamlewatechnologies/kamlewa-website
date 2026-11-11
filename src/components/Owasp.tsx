@@ -10,6 +10,7 @@ import { useTranslations } from 'next-intl';
 import { createCommunityApplication } from '@/lib/supabase/submissions';
 import { supabase } from '@/lib/supabase/supabaseClient';
 import toast from 'react-hot-toast';
+import { validateEmail } from '@/lib/validateEmail';
 
 const GOOGLE_SHEETS_URL = process.env.NEXT_PUBLIC_GOOGLE_SHEETS_URL;
 
@@ -33,27 +34,6 @@ async function sendCommunityApplicationEmail(data: {
   }
 }
 
-async function validateEmail(email: string): Promise<boolean> {
-  const formatValid = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/.test(email);
-  if (!formatValid) return false;
-
-  try {
-    const res = await fetch(
-      `https://emailreputation.abstractapi.com/v1/?api_key=${process.env.NEXT_PUBLIC_ABSTRACT_API_KEY}&email=${encodeURIComponent(email)}`
-    );
-    const data = await res.json();
-
-    return (
-      data.email_deliverability?.status === 'deliverable' &&
-      data.email_deliverability?.is_format_valid === true &&
-      data.email_deliverability?.is_mx_valid === true &&
-      data.email_quality?.is_disposable === false &&
-      data.email_quality?.score >= 0.5
-    );
-  } catch {
-    return formatValid;
-  }
-}
 const OWASP_YELLOW = '#f7c600';
 
 function ZigzagLine({ className = '' }: { className?: string }) {

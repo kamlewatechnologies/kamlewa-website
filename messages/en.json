@@ -511,6 +511,15 @@
       "name": "Full Name",
       "email": "Email Address",
       "phone": "Phone Number",
+      "profession": "Profession (e.g. Student, Developer)",
+      "sex": "Sex",
+      "sexOptions": {
+        "male": "Male",
+        "female": "Female",
+        "preferNot": "Prefer not to say"
+      },
+      "organization": "School / Organization (optional)",
+      "city": "City (optional)",
       "submit": "Register for Event",
       "submitting": "Registering..."
     },

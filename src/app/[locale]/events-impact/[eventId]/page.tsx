@@ -20,6 +20,7 @@ import { mapDbEventToEvent, mapDbRegistrationToParticipant } from '@/utils/event
 import { getEventById, getEventRegistrations, registerForEvent } from '@/lib/supabase/events';
 import Loader from '@/components/Loader';
 import { supabase } from '@/lib/supabase/supabaseClient';
+import { validateEmail } from '@/lib/validateEmail';
 
 async function sendEventRegistrationEmail(data: {
   name: string;
@@ -41,27 +42,6 @@ async function sendEventRegistrationEmail(data: {
   } catch { return false; }
 }
 
-async function validateEmail(email: string): Promise<boolean> {
-  const formatValid = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/.test(email);
-  if (!formatValid) return false;
-
-  try {
-    const res = await fetch(
-      `https://emailreputation.abstractapi.com/v1/?api_key=${process.env.NEXT_PUBLIC_ABSTRACT_API_KEY}&email=${encodeURIComponent(email)}`
-    );
-    const data = await res.json();
-
-    return (
-      data.email_deliverability?.status === 'deliverable' &&
-      data.email_deliverability?.is_format_valid === true &&
-      data.email_deliverability?.is_mx_valid === true &&
-      data.email_quality?.is_disposable === false &&
-      data.email_quality?.score >= 0.5
-    );
-  } catch {
-    return formatValid;
-  }
-}
 
 export default function EventDetailsPage() {
   const params = useParams();
@@ -72,7 +52,7 @@ export default function EventDetailsPage() {
 
   const [event, setEvent] = useState<Event | null>(null);
   const [loading, setLoading] = useState(true);
-  const [formData, setFormData] = useState({ name: '', email: '', phone: '' });
+  const [formData, setFormData] = useState({ name: '', email: '', phone: '', profession: '', sex: '', organization: '', city: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -148,8 +128,15 @@ export default function EventDetailsPage() {
   if (!event) return;
   setIsSubmitting(true);
 
+  const email = formData.email.trim();
+  if (!formData.sex) {
+    toast.error(t('form.sex'));
+    setIsSubmitting(false);
+    return;
+  }
+
   //Validate email
-  const emailValid = await validateEmail(formData.email);
+  const emailValid = await validateEmail(email);
   if (!emailValid) {
     toast.error('This email address does not appear to be valid. Please check and try again.');
     setIsSubmitting(false);
@@ -160,7 +147,7 @@ export default function EventDetailsPage() {
   const { data: existing } = await supabase
     .from('event_registrations')
     .select('id')
-    .eq('email', formData.email)
+    .eq('email', email)
     .eq('event_id', event.id)
     .maybeSingle();
 
@@ -176,8 +163,8 @@ export default function EventDetailsPage() {
     : undefined;
 
   const emailSent = await sendEventRegistrationEmail({
-    name: formData.name,
-    email: formData.email,
+    name: formData.name.trim(),
+    email,
     phone: formData.phone,
     eventTitle: event.title,
     eventDate: event.date,
@@ -195,9 +182,13 @@ export default function EventDetailsPage() {
   try {
     const registration = await registerForEvent({
       event_id: event.id,
-      name: formData.name,
-      email: formData.email,
+      name: formData.name.trim(),
+      email,
       phone: formData.phone || null,
+      profession: formData.profession.trim() || null,
+      sex: formData.sex || null,
+      organization: formData.organization.trim() || null,
+      city: formData.city.trim() || null,
       status: 'confirmed',
     });
     const newParticipant = mapDbRegistrationToParticipant(registration);
@@ -206,7 +197,7 @@ export default function EventDetailsPage() {
       registeredParticipants: [...(event.registeredParticipants || []), newParticipant],
     });
     toast.success('Registration confirmed! Check your email.');
-    setFormData({ name: '', email: '', phone: '' });
+    setFormData({ name: '', email: '', phone: '', profession: '', sex: '', organization: '', city: '' });
   } catch (error) {
     console.error('Registration error:', error);
     toast.error(t('registration.error'));
@@ -255,7 +246,7 @@ export default function EventDetailsPage() {
 
   return (
     <>
-      <main className="bg-[#1a1a1a] text-white p-6 md:p-12 lg:p-16">
+      <main className="bg-black text-white">
         <PageBanner
           subheading={tPage('subheading')}
           heading={event.title}
@@ -281,7 +272,7 @@ export default function EventDetailsPage() {
                 <p className="text-gray-300 text-lg leading-relaxed">{event.summary || event.description}</p>
               </motion.div>
 
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-[#555555] border border-black/10 p-6 space-y-6 text-black shadow-lg">
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-white/5 border border-white/10 p-6 space-y-6 text-white">
                 <h3 className="text-xl font-bold mb-4">Event Details</h3>
                 <div className="space-y-3">
                   <div className="flex items-center gap-3"><HiOutlineCalendarDateRange className="w-5 h-5 text-yellow-400" /><span>{event.date}</span></div>
@@ -301,14 +292,14 @@ export default function EventDetailsPage() {
 
             <div className="lg:col-span-1">
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="sticky top-24 space-y-6">
-                <div className="bg-[#555555] border border-black/10 p-6 space-y-6 text-black shadow-lg">
+                <div className="bg-white/5 border border-white/10 p-6 space-y-6 text-white">
                   <div>
                     <h3 className="text-2xl font-bold mb-2" style={{ fontFamily: 'var(--font-nourd), sans-serif' }}>Register Now</h3>
                     {event.maxParticipants && (
-                      <div className="flex items-center justify-between pt-2 border-t border-black/15 mt-2">
-                        <span className="text-sm text-black/70">{registeredCount} / {event.maxParticipants} registered</span>
+                      <div className="flex items-center justify-between pt-2 border-t border-white/10 mt-2">
+                        <span className="text-sm text-gray-400">{registeredCount} / {event.maxParticipants} registered</span>
                         {spotsLeft !== null && (
-                          <span className={`text-sm font-semibold ${isFull ? 'text-red-700' : 'text-black'}`}>
+                          <span className={`text-sm font-semibold ${isFull ? 'text-red-400' : 'text-yellow-400'}`}>
                             {isFull ? t('full') : `${spotsLeft} ${t('spotsAvailable')}`}
                           </span>
                         )}
@@ -318,9 +309,24 @@ export default function EventDetailsPage() {
 
                   {event.registrationOpen !== false && !isFull ? (
                     <form onSubmit={handleSubmit} className="space-y-4">
-                      <Input type="text" placeholder={t('form.name')} value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} required className="bg-white border-black/20 text-black placeholder-black/50 focus:ring-2 focus:ring-black/20 focus:border-black" />
-                      <Input type="email" placeholder={t('form.email')} value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} required className="bg-white border-black/20 text-black placeholder-black/50 focus:ring-2 focus:ring-black/20 focus:border-black" />
-                      <Input type="tel" placeholder={t('form.phone')} value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} required className="bg-white border-black/20 text-black placeholder-black/50 focus:ring-2 focus:ring-black/20 focus:border-black" />
+                      <Input type="text" placeholder={t('form.name')} value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} required className="w-full bg-white/5 border-white/20" />
+                      <Input type="email" placeholder={t('form.email')} value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} required className="w-full bg-white/5 border-white/20" />
+                      <Input type="tel" placeholder={t('form.phone')} value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} required className="w-full bg-white/5 border-white/20" />
+                      <Input type="text" placeholder={t('form.profession')} value={formData.profession} onChange={(e) => setFormData({ ...formData, profession: e.target.value })} required className="w-full bg-white/5 border-white/20" />
+                      <select
+                        aria-label={t('form.sex')}
+                        value={formData.sex}
+                        onChange={(e) => setFormData({ ...formData, sex: e.target.value })}
+                        required
+                        className={`w-full px-4 py-2 bg-white/5 border border-white/20 focus:outline-none focus:border-yellow-400 transition-colors text-sm ${formData.sex ? 'text-white' : 'text-gray-500'}`}
+                      >
+                        <option value="" disabled className="bg-black">{t('form.sex')}</option>
+                        <option value="male" className="bg-black text-white">{t('form.sexOptions.male')}</option>
+                        <option value="female" className="bg-black text-white">{t('form.sexOptions.female')}</option>
+                        <option value="prefer_not_to_say" className="bg-black text-white">{t('form.sexOptions.preferNot')}</option>
+                      </select>
+                      <Input type="text" placeholder={t('form.organization')} value={formData.organization} onChange={(e) => setFormData({ ...formData, organization: e.target.value })} className="w-full bg-white/5 border-white/20" />
+                      <Input type="text" placeholder={t('form.city')} value={formData.city} onChange={(e) => setFormData({ ...formData, city: e.target.value })} className="w-full bg-white/5 border-white/20" />
                       <Button type="submit" variant="primary" disabled={isSubmitting} className="w-full">
                         {isSubmitting ? t('form.submitting') : t('form.submit')}
                       </Button>
@@ -331,7 +337,7 @@ export default function EventDetailsPage() {
                     </div>
                   )}
 
-                  <div className="space-y-3 pt-4 border-t border-black/15">
+                  <div className="space-y-3 pt-4 border-t border-white/10">
                     <Button variant="outline-yellow" onClick={handleShare} className="w-full">
                       <HiShare className="w-5 h-5" />{copied ? t('share.copied') : t('share.button')}
                     </Button>

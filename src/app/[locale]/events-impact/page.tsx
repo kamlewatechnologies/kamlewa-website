@@ -563,7 +563,7 @@ export default function EventsImpactPage() {
   };
 
   return (
-    <main className="relative">
+    <main className="relative bg-black">
       <Navbar />
       <PageBanner
         subheading={t('subheading')}

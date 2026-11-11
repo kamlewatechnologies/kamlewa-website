@@ -150,7 +150,7 @@ export default function Partners({ className }: { className?: string } ) {
   const duplicatedPartners = [...partners, ...partners, ...partners];
 
   return (
-    <section className="bg-gray-600 text-white py-4 md:py-10">
+    <section className="bg-black text-white py-4 md:py-10 border-y border-white/5">
 
       <div className={`max-w-5xl mx-auto px-6 md:px-12 lg:px-16 ${className}`}>
         <motion.div
@@ -173,10 +173,10 @@ export default function Partners({ className }: { className?: string } ) {
           {/* Partners Carousel */}
           <motion.div variants={itemVariants} className="relative overflow-hidden">
             {/* Gradient fade on left edge */}
-            <div className="absolute left-0 top-0 bottom-0 w-12 md:w-20 bg-linear-to-r from-gray-100 via-gray-100/80 to-transparent pointer-events-none z-10"></div>
+            <div className="absolute left-0 top-0 bottom-0 w-12 md:w-20 bg-linear-to-r from-black via-black/80 to-transparent pointer-events-none z-10"></div>
             
             {/* linear fade on right edge */}
-            <div className="absolute right-0 top-0 bottom-0 w-12 md:w-20 bg-linear-to-l from-gray-100 via-gray-100/80 to-transparent pointer-events-none z-10"></div>
+            <div className="absolute right-0 top-0 bottom-0 w-12 md:w-20 bg-linear-to-l from-black via-black/80 to-transparent pointer-events-none z-10"></div>
             
             <Swiper
               modules={[Autoplay]}
@@ -204,7 +204,7 @@ export default function Partners({ className }: { className?: string } ) {
                       alt={partner.name}
                       width={200}
                       height={80}
-                      className="object-contain h-full w-auto max-w-[100px] md:max-w-[180px] brightness-100 transition-all duration-300"
+                      className="object-contain h-full w-auto max-w-[100px] md:max-w-[180px] rounded-sm opacity-90 hover:opacity-100 transition-all duration-300"
                     />
                   </div>
                 </SwiperSlide>

@@ -134,6 +134,10 @@ export type Database = {
           name: string;
           email: string;
           phone: string | null;
+          profession: string | null;
+          sex: string | null;
+          organization: string | null;
+          city: string | null;
           status: 'pending' | 'confirmed' | 'cancelled';
           registered_at: string;
           created_at: string;
@@ -145,6 +149,10 @@ export type Database = {
           name: string;
           email: string;
           phone?: string | null;
+          profession?: string | null;
+          sex?: string | null;
+          organization?: string | null;
+          city?: string | null;
           status?: 'pending' | 'confirmed' | 'cancelled';
           registered_at?: string;
           created_at?: string;
@@ -156,6 +164,10 @@ export type Database = {
           name?: string;
           email?: string;
           phone?: string | null;
+          profession?: string | null;
+          sex?: string | null;
+          organization?: string | null;
+          city?: string | null;
           status?: 'pending' | 'confirmed' | 'cancelled';
           registered_at?: string;
           created_at?: string;

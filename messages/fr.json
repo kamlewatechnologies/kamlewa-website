@@ -519,6 +519,15 @@
       "name": "Nom Complet",
       "email": "Adresse Email",
       "phone": "Numéro de Téléphone",
+      "profession": "Profession (ex. Étudiant, Développeur)",
+      "sex": "Sexe",
+      "sexOptions": {
+        "male": "Homme",
+        "female": "Femme",
+        "preferNot": "Je préfère ne pas répondre"
+      },
+      "organization": "École / Organisation (facultatif)",
+      "city": "Ville (facultatif)",
       "submit": "S'Inscrire à l'Événement",
       "submitting": "Inscription en cours..."
     },

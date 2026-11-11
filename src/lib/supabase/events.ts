@@ -67,12 +67,23 @@ export async function deleteEvent(id: string) {
 }
 
 // Event Registrations
+const EXTRA_REGISTRATION_FIELDS = ['profession', 'sex', 'organization', 'city'] as const;
+
 export async function registerForEvent(registration: EventRegistrationInsert) {
-  const { data, error } = await supabase
-    .from('event_registrations')
-    .insert(registration)
-    .select()
-    .single();
+  const insert = (row: EventRegistrationInsert) =>
+    supabase.from('event_registrations').insert(row).select().single();
+
+  let { data, error } = await insert(registration);
+
+  // If the profile columns haven't been added to the database yet
+  // (scripts/add-event-registration-fields.sql), save the core registration
+  // rather than turning the person away.
+  if (error && (error.code === 'PGRST204' || error.code === '42703')) {
+    console.warn('event_registrations is missing profile columns; run scripts/add-event-registration-fields.sql');
+    const core = { ...registration };
+    for (const field of EXTRA_REGISTRATION_FIELDS) delete core[field];
+    ({ data, error } = await insert(core));
+  }
 
   if (error) throw error;
   return data as EventRegistration;
