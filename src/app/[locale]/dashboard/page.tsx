@@ -18,6 +18,9 @@ import { Database } from '@/lib/supabase/types';
 import CircularProgress from '@/components/CircularProgress';
 import Loader from '@/components/Loader';
 import toast from 'react-hot-toast';
+import { supabase } from '@/lib/supabase/supabaseClient';
+import { useAccess } from '@/lib/access';
+import { HiOutlineInboxStack } from 'react-icons/hi2';
 
 type Program = Database['public']['Tables']['programs']['Row'];
 type Event = Database['public']['Tables']['events']['Row'];
@@ -49,6 +52,28 @@ export default function DashboardPage() {
   const [trainings, setTrainings] = useState<Training[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
+  const { can } = useAccess();
+  const [regTotals, setRegTotals] = useState<{ events: number; trainings: number; communities: number; other: number } | null>(null);
+  const [recentRegs, setRecentRegs] = useState<{ id: string; name: string; email: string; event_id: string; registered_at: string }[]>([]);
+
+  // Registrations (only for people allowed to see them)
+  useEffect(() => {
+    if (!can('registrations')) return;
+    const countOf = async (table: string) => {
+      const { count } = await supabase.from(table).select('id', { count: 'exact', head: true });
+      return count ?? 0;
+    };
+    (async () => {
+      const [ev, tr, co, vo, pa, me, recent] = await Promise.all([
+        countOf('event_registrations'), countOf('training_registrations'), countOf('community_applications'),
+        countOf('volunteer_applications'), countOf('partnership_inquiries'), countOf('contact_submissions'),
+        supabase.from('event_registrations').select('id, name, email, event_id, registered_at').order('registered_at', { ascending: false }).limit(6),
+      ]);
+      setRegTotals({ events: ev, trainings: tr, communities: co, other: vo + pa + me });
+      setRecentRegs((recent.data ?? []) as typeof recentRegs);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [can('registrations')]);
 
   // Load all data from Supabase
   useEffect(() => {
@@ -103,13 +128,22 @@ export default function DashboardPage() {
     return Math.round(sum / projectsWithProgress.length);
   }, [projects]);
 
-  const stats = [
+  const stats: { id: string; value: number; label: string; meta: string; secondary?: string; href: string }[] = [
+    ...(regTotals ? [{
+      id: 'registrations',
+      value: regTotals.events + regTotals.trainings + regTotals.communities + regTotals.other,
+      label: 'Registrations',
+      meta: 'Event, training & community sign-ups',
+      secondary: `${regTotals.events} event · ${regTotals.trainings} training · ${regTotals.communities} community`,
+      href: '/dashboard/registrations',
+    }] : []),
     {
       id: 'programs',
       value: programs.length,
       label: t('stats.programs.label'),
       meta: t('stats.programs.meta'),
       secondary: totalProgramParticipants > 0 ? `${totalProgramParticipants.toLocaleString()} participants` : undefined,
+      href: '/dashboard/programs',
     },
     {
       id: 'events',
@@ -117,12 +151,14 @@ export default function DashboardPage() {
       label: t('stats.events.label'),
       meta: t('stats.events.meta'),
       secondary: totalEventParticipants > 0 ? `${totalEventParticipants.toLocaleString()} participants` : undefined,
+      href: '/dashboard/events',
     },
     {
       id: 'trainings',
       value: trainings.length,
       label: t('stats.trainings.label'),
       meta: t('stats.trainings.meta'),
+      href: '/dashboard/trainings',
     },
     {
       id: 'projects',
@@ -130,8 +166,10 @@ export default function DashboardPage() {
       label: t('stats.projects.label'),
       meta: t('stats.projects.meta'),
       secondary: completedProjects > 0 ? `${completedProjects} completed` : undefined,
+      href: '/dashboard/projects',
     },
   ];
+  const eventTitle = (id: string) => events.find((e) => e.id === id)?.title ?? 'Event';
 
   const activityFeed: ActivityItem[] = useMemo(() => {
     const latestEvents = events
@@ -241,14 +279,18 @@ export default function DashboardPage() {
           ) : (
             <>
               {/* Stats Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+              <div className={`grid grid-cols-1 md:grid-cols-2 ${stats.length > 4 ? 'xl:grid-cols-5' : 'xl:grid-cols-4'} gap-6`}>
                 {stats.map((stat, index) => (
                   <motion.div
                     key={stat.id}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.4, delay: index * 0.1 }}
-                    className="group relative bg-gradient-to-br from-white/5 to-white/[0.02] border border-white/10 p-6 rounded-lg flex flex-col gap-4 hover:border-yellow-400/30 hover:shadow-lg hover:shadow-yellow-400/10 transition-all duration-300 overflow-hidden"
+                    onClick={() => router.push(stat.href)}
+                    role="link"
+                    tabIndex={0}
+                    onKeyDown={(e) => { if (e.key === 'Enter') router.push(stat.href); }}
+                    className="cursor-pointer group relative bg-gradient-to-br from-white/5 to-white/[0.02] border border-white/10 p-6 rounded-lg flex flex-col gap-4 hover:border-yellow-400/30 hover:shadow-lg hover:shadow-yellow-400/10 transition-all duration-300 overflow-hidden"
                   >
                     {/* Background gradient effect */}
                     <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
@@ -282,25 +324,25 @@ export default function DashboardPage() {
     initial={{ opacity: 0, x: -20 }}
     animate={{ opacity: 1, x: 0 }}
     transition={{ duration: 0.5, delay: 0.2 }}
-    className="lg:col-span-2 bg-gradient-to-br from-gray-50 to-white border border-gray-200 rounded-lg p-8 hover:border-gray-300 transition-all"
+    className="lg:col-span-2 bg-gradient-to-br from-white/5 to-white/[0.02] border border-white/10 rounded-lg p-6 md:p-8 hover:border-white/20 transition-all"
   >
-    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8 pb-6 border-b border-gray-200">
+    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8 pb-6 border-b border-white/10">
       <div className="flex items-center gap-4">
-        <div className="p-3 bg-yellow-100 rounded-lg border border-yellow-200">
+        <div className="p-3 bg-yellow-400/10 rounded-lg border border-yellow-400/20">
           <HiOutlineCalendarDateRange className="w-6 h-6 text-yellow-400" />
         </div>
         <div>
-          <p className="text-yellow-700 text-sm font-semibold uppercase tracking-wider">
+          <p className="text-yellow-400 text-sm font-semibold uppercase tracking-wider">
             {t('sections.events.subtitle')}
           </p>
-          <h2 className="text-2xl md:text-3xl font-bold mt-1 text-gray-900" style={{ fontFamily: 'var(--font-nourd), sans-serif' }}>
+          <h2 className="text-2xl md:text-3xl font-bold mt-1 text-white" style={{ fontFamily: 'var(--font-nourd), sans-serif' }}>
             {t('sections.events.title')}
           </h2>
         </div>
       </div>
       <Link
         href="/dashboard/events"
-        className="inline-flex items-center gap-2 text-yellow-700 hover:text-yellow-600 transition-colors px-4 py-2 rounded-lg hover:bg-yellow-100"
+        className="inline-flex items-center gap-2 text-yellow-400 hover:text-yellow-300 transition-colors px-4 py-2 rounded-lg hover:bg-yellow-400/10"
       >
         View All Events
         <HiArrowRight className="w-4 h-4" />
@@ -315,51 +357,92 @@ export default function DashboardPage() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.3 + index * 0.1 }}
-            className="border border-gray-200 bg-white p-5 rounded-lg hover:border-yellow-300 hover:bg-yellow-50 transition-all group flex flex-col"
+            className="border border-white/10 bg-black/30 p-5 rounded-lg hover:border-yellow-400/30 hover:bg-black/50 transition-all group flex flex-col"
           >
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-3">
-                <span className="px-3 py-1 text-xs uppercase tracking-wide bg-yellow-100 text-yellow-700 rounded">
+                <span className="px-3 py-1 text-xs uppercase tracking-wide bg-yellow-400/10 text-yellow-400 rounded">
                   {event.type === 'featured'
                     ? tEvents('tabs.featured')
                     : tEvents('tabs.upcoming')}
                 </span>
-                <span className="text-sm text-gray-600 flex items-center gap-1">
+                <span className="text-sm text-gray-400 flex items-center gap-1">
                   <HiOutlineCalendarDateRange className="w-4 h-4 text-yellow-400" />
                   {new Date(event.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
                 </span>
               </div>
-              <h3 className="text-xl font-semibold mb-2 text-gray-900">{event.title}</h3>
-              <p className="text-gray-700 text-sm mb-4 line-clamp-2">{event.description}</p>
-              <div className="flex items-center gap-4 text-gray-700 text-sm mb-4">
+              <h3 className="text-xl font-semibold mb-2 text-white">{event.title}</h3>
+              <p className="text-gray-400 text-sm mb-4 line-clamp-2">{event.description}</p>
+              <div className="flex flex-wrap items-center gap-4 text-gray-400 text-sm mb-4">
                 <div className="flex items-center gap-2">
-                  <VscLocation className="w-4 h-4 text-gray-700" />
+                  <VscLocation className="w-4 h-4 text-yellow-400" />
                   {event.location}
                 </div>
                 {event.participants !== undefined && event.participants > 0 && (
                   <div className="flex items-center gap-2">
-                    <HiUsers className="w-4 h-4 text-gray-700" />
+                    <HiUsers className="w-4 h-4 text-yellow-400" />
                     {event.participants} participants
                   </div>
                 )}
               </div>
             </div>
-            <div className="flex justify-end mt-auto pt-4 border-t border-gray-200">
+            <div className="flex flex-wrap justify-end gap-2 mt-auto pt-4 border-t border-white/10">
+              {can('registrations') && (
+                <Link
+                  href={`/dashboard/registrations?tab=events&group=${event.id}`}
+                  className="inline-flex items-center gap-2 text-white/80 hover:text-white px-4 py-2 rounded-lg hover:bg-white/5 transition-all"
+                >
+                  <HiOutlineInboxStack className="w-4 h-4" />
+                  Registrations
+                </Link>
+              )}
               <Link
                 href="/dashboard/events"
-                className="inline-flex items-center gap-2 text-yellow-700 hover:text-yellow-600 px-4 py-2 rounded-lg hover:bg-yellow-100 group-hover:translate-x-1 transition-all"
+                className="inline-flex items-center gap-2 text-yellow-400 hover:text-yellow-300 px-4 py-2 rounded-lg hover:bg-yellow-400/10 group-hover:translate-x-1 transition-all"
               >
-                View Details
+                Manage event
                 <HiArrowRight className="w-4 h-4" />
               </Link>
             </div>
           </motion.div>
         ))
       ) : (
-        <p className="text-gray-500 text-center py-8">{t('empty')}</p>
+        <p className="text-gray-400 text-center py-8">{t('empty')}</p>
       )}
     </div>
   </motion.div>
+
+  {can('registrations') && (
+    <motion.div
+      initial={{ opacity: 0, x: 20 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.5, delay: 0.25 }}
+      className="bg-gradient-to-br from-white/5 to-white/[0.02] border border-white/10 rounded-lg p-6 hover:border-white/20 transition-all flex flex-col"
+    >
+      <div className="flex items-center gap-3 mb-5 pb-4 border-b border-white/10">
+        <div className="p-3 bg-yellow-400/10 rounded-lg border border-yellow-400/20">
+          <HiOutlineInboxStack className="w-5 h-5 text-yellow-400" />
+        </div>
+        <div>
+          <p className="text-yellow-400 text-xs font-semibold uppercase tracking-wider">Latest sign-ups</p>
+          <h2 className="text-xl font-bold mt-0.5" style={{ fontFamily: 'var(--font-nourd), sans-serif' }}>Registrations</h2>
+        </div>
+      </div>
+      <div className="space-y-1 flex-1">
+        {recentRegs.length ? recentRegs.map((r) => (
+          <Link key={r.id} href={`/dashboard/registrations?tab=events&group=${r.event_id}`}
+            className="block px-3 py-2.5 -mx-3 rounded hover:bg-white/5 transition-colors">
+            <p className="text-sm font-semibold truncate">{r.name}</p>
+            <p className="text-xs text-gray-400 truncate">{eventTitle(r.event_id)} · {new Date(r.registered_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</p>
+          </Link>
+        )) : <p className="text-gray-400 text-sm py-6 text-center">No registrations yet.</p>}
+      </div>
+      <Link href="/dashboard/registrations" className="inline-flex items-center gap-2 text-yellow-400 hover:text-yellow-300 transition-colors text-sm mt-4 pt-4 border-t border-white/10">
+        View all registrations
+        <HiArrowRight className="w-4 h-4" />
+      </Link>
+    </motion.div>
+  )}
 </div>
 
 
@@ -434,11 +517,12 @@ export default function DashboardPage() {
               <div className="space-y-3">
                 {highlightedPrograms.map((program, index) => (
                   <motion.div
+                    onClick={() => router.push('/dashboard/programs')}
                     key={program.id}
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ duration: 0.3, delay: 0.5 + index * 0.1 }}
-                    className="group border-l-2 border-yellow-400/30 pl-4 py-3 hover:border-yellow-400 transition-colors"
+                    className="cursor-pointer group border-l-2 border-yellow-400/30 pl-4 py-3 hover:border-yellow-400 transition-colors"
                   >
                     <h3 className="text-base font-semibold mb-1.5 group-hover:text-yellow-400 transition-colors">
                       {program.title}
@@ -493,11 +577,12 @@ export default function DashboardPage() {
               <div className="space-y-3">
                 {highlightedTrainings.map((training, index) => (
                   <motion.div
+                    onClick={() => router.push('/dashboard/trainings')}
                     key={training.id}
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ duration: 0.3, delay: 0.6 + index * 0.1 }}
-                    className="group border-l-2 border-yellow-400/30 pl-4 py-3 hover:border-yellow-400 transition-colors"
+                    className="cursor-pointer group border-l-2 border-yellow-400/30 pl-4 py-3 hover:border-yellow-400 transition-colors"
                   >
                     <h3 className="text-base font-semibold mb-1.5 group-hover:text-yellow-400 transition-colors">
                       {training.title}
@@ -552,11 +637,12 @@ export default function DashboardPage() {
                 {highlightedActiveProjects.length ? (
                   highlightedActiveProjects.map((project, index) => (
                     <motion.div
+                      onClick={() => router.push('/dashboard/projects')}
                       key={project.id}
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ duration: 0.3, delay: 0.7 + index * 0.1 }}
-                      className="group border-l-2 border-yellow-400/30 pl-4 py-3 hover:border-yellow-400 transition-colors relative"
+                      className="cursor-pointer group border-l-2 border-yellow-400/30 pl-4 py-3 hover:border-yellow-400 transition-colors relative"
                     >
                       <div className="flex items-start justify-between mb-1.5">
                         <h3 className="text-base font-semibold group-hover:text-yellow-400 transition-colors pr-2">

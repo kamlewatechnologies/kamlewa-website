@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import Button from '@/components/Button';
@@ -31,6 +31,21 @@ export default function BroadcastPage() {
   const [isSending, setIsSending] = useState(false);
   const [sent, setSent] = useState<number | null>(null);
   const csvInputRef = useRef<HTMLInputElement>(null);
+
+  // Recipients handed over from the Registrations page ("Email these people")
+  useEffect(() => {
+    try {
+      const handoff = sessionStorage.getItem('broadcastRecipients');
+      if (handoff) {
+        sessionStorage.removeItem('broadcastRecipients');
+        const list = JSON.parse(handoff) as string[];
+        if (Array.isArray(list) && list.length) {
+          setPastedEmails(list.join(', '));
+          toast.success(`${list.length} recipient(s) added from Registrations`);
+        }
+      }
+    } catch { /* storage unavailable */ }
+  }, []);
 
   const pastedCount = parseEmails(pastedEmails).length;
   const csvCount = csvEmails.length;

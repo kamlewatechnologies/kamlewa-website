@@ -16,11 +16,12 @@ import { Event } from '@/data/events';
 import { downloadICS, getGoogleCalendarUrl, getOutlookCalendarUrl } from '@/utils/calendar';
 import toast from 'react-hot-toast';
 import { Link } from '@/i18n/routing';
-import { mapDbEventToEvent, mapDbRegistrationToParticipant } from '@/utils/eventMapper';
-import { getEventById, getEventRegistrations, registerForEvent } from '@/lib/supabase/events';
+import { mapDbEventToEvent } from '@/utils/eventMapper';
+import { getEventById, registerForEvent } from '@/lib/supabase/events';
+import { getEventRegistrationCount } from '@/lib/supabase/registrationChecks';
 import Loader from '@/components/Loader';
-import { supabase } from '@/lib/supabase/supabaseClient';
 import { validateEmail } from '@/lib/validateEmail';
+import { isAlreadyRegistered } from '@/lib/supabase/registrationChecks';
 
 async function sendEventRegistrationEmail(data: {
   name: string;
@@ -63,15 +64,7 @@ export default function EventDetailsPage() {
         const dbEvent = await getEventById(eventId);
         const mappedEvent = mapDbEventToEvent(dbEvent, locale);
 
-        try {
-          const registrations = await getEventRegistrations(dbEvent.id);
-          mappedEvent.registeredParticipants = registrations
-            .filter(reg => reg.status === 'confirmed')
-            .map(mapDbRegistrationToParticipant);
-        } catch (error) {
-          console.error('Error loading registrations:', error instanceof Error ? error.message : JSON.stringify(error, Object.getOwnPropertyNames(error)));
-          mappedEvent.registeredParticipants = [];
-        }
+        mappedEvent.registeredCount = await getEventRegistrationCount(dbEvent.id);
 
         setEvent(mappedEvent);
       } catch (error) {
@@ -118,7 +111,7 @@ export default function EventDetailsPage() {
     );
   }
 
-  const registeredCount = event.registeredParticipants?.length || 0;
+  const registeredCount = event.registeredCount ?? 0;
   const isFull = event.maxParticipants ? registeredCount >= event.maxParticipants : false;
   const spotsLeft = event.maxParticipants ? event.maxParticipants - registeredCount : null;
 
@@ -144,12 +137,7 @@ export default function EventDetailsPage() {
   }
 
   //Check duplicate
-  const { data: existing } = await supabase
-    .from('event_registrations')
-    .select('id')
-    .eq('email', email)
-    .eq('event_id', event.id)
-    .maybeSingle();
+  const existing = await isAlreadyRegistered('event', String(event.id), email);
 
   if (existing) {
     toast.error('You have already registered for this event with this email.');
@@ -180,7 +168,7 @@ export default function EventDetailsPage() {
 
   //Register to Supabase
   try {
-    const registration = await registerForEvent({
+    await registerForEvent({
       event_id: event.id,
       name: formData.name.trim(),
       email,
@@ -191,11 +179,7 @@ export default function EventDetailsPage() {
       city: formData.city.trim() || null,
       status: 'confirmed',
     });
-    const newParticipant = mapDbRegistrationToParticipant(registration);
-    setEvent({
-      ...event,
-      registeredParticipants: [...(event.registeredParticipants || []), newParticipant],
-    });
+    setEvent({ ...event, registeredCount: registeredCount + 1 });
     toast.success('Registration confirmed! Check your email.');
     setFormData({ name: '', email: '', phone: '', profession: '', sex: '', organization: '', city: '' });
   } catch (error) {
@@ -252,17 +236,18 @@ export default function EventDetailsPage() {
           heading={event.title}
           description={event.description}
           imageUrl={event.image}
+          compactOnMobile
         />
 
-        <div className="max-w-7xl mx-auto px-6 md:px-12 lg:px-16 pt-8">
-          <Link href="/events-impact">
+        <div className="max-w-7xl mx-auto px-6 md:px-12 lg:px-16 md:pt-8">
+          <Link href="/events-impact" className="hidden md:inline-block">
             <Button variant="outline-white" className="mb-8"><HiArrowLeft className="w-5 h-5" />Back to Events</Button>
           </Link>
         </div>
 
         <div className="max-w-7xl mx-auto px-6 md:px-12 lg:px-16 pb-16">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 space-y-8">
+            <div className="lg:col-span-2 space-y-8 order-2 lg:order-1">
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="relative h-64 md:h-96 overflow-hidden">
                 <Image src={event.image} alt={event.title} fill className="object-cover" unoptimized />
               </motion.div>
@@ -290,8 +275,8 @@ export default function EventDetailsPage() {
               </motion.div>
             </div>
 
-            <div className="lg:col-span-1">
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="sticky top-24 space-y-6">
+            <div id="register" className="lg:col-span-1 order-1 lg:order-2 scroll-mt-24">
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="lg:sticky lg:top-24 space-y-6">
                 <div className="bg-white/5 border border-white/10 p-6 space-y-6 text-white">
                   <div>
                     <h3 className="text-2xl font-bold mb-2" style={{ fontFamily: 'var(--font-nourd), sans-serif' }}>Register Now</h3>

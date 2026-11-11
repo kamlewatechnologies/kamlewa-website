@@ -21,6 +21,7 @@ export interface Event {
   // Registration features
   maxParticipants?: number;
   registeredParticipants?: EventParticipant[];
+  registeredCount?: number;
   registrationOpen?: boolean;
   startTime?: string; // ISO format: "2024-03-15T09:00:00"
   endTime?: string; // ISO format: "2024-03-15T17:00:00"

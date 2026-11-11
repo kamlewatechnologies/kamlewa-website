@@ -1,9 +1,16 @@
 import { Resend } from 'resend';
 import { NextResponse } from 'next/server';
+import { requirePermission } from '@/lib/supabase/admin';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(req: Request) {
+  // Only signed-in staff with the broadcast permission may send emails
+  const guard = await requirePermission('broadcast');
+  if (!guard.ok) {
+    return NextResponse.json({ success: false, error: guard.error }, { status: guard.status });
+  }
+
   try {
     const { emails, subject, body, driveLink, driveLinkLabel } = await req.json();
 

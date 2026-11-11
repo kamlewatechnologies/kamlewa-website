@@ -16,6 +16,8 @@ import DashboardModal from '@/components/DashboardModal';
 import { getEvents, createEvent, updateEvent, deleteEvent } from '@/lib/supabase/events';
 import { Database } from '@/lib/supabase/types';
 import Loader from '@/components/Loader';
+import { Link } from '@/i18n/routing';
+import { useAccess } from '@/lib/access';
 
 type Event = Database['public']['Tables']['events']['Row'];
 type EventInsert = Database['public']['Tables']['events']['Insert'];
@@ -39,6 +41,7 @@ const emptyForm: ExtendedEventData = {
 };
 
 export default function EventsPage() {
+  const { can } = useAccess();
   const t = useTranslations('dashboard');
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
@@ -195,8 +198,8 @@ export default function EventsPage() {
           {events.map((event) => {
             const formattedDate = event.date ? new Date(event.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : event.date;
             return (
-              <div key={event.id} className="bg-white/5 border border-white/10 overflow-hidden flex h-60 group hover:border-white/20 transition-all">
-                <div className="relative w-48 h-full shrink-0 bg-white/5 border-r-2 border-yellow-400/20 group-hover:border-yellow-400/40 transition-colors duration-300">
+              <div key={event.id} className="bg-white/5 border border-white/10 overflow-hidden flex min-h-60 group hover:border-white/20 transition-all">
+                <div className="relative hidden sm:block w-48 min-h-60 shrink-0 bg-white/5 border-r-2 border-yellow-400/20 group-hover:border-yellow-400/40 transition-colors duration-300">
                   {event.image ? <Image src={event.image} alt={event.title} fill className="object-cover" unoptimized /> : <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-white/10 to-white/5"><HiPhotograph className="w-12 h-12 text-white/30" /></div>}
                   <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>
@@ -218,6 +221,11 @@ export default function EventsPage() {
                     {event.participants !== undefined && event.participants > 0 && <div className="flex items-center gap-2 text-gray-400"><HiUsers className="w-4 h-4" /><span>{event.participants} participants</span></div>}
                     {event.feedback && <span className="text-xs text-green-400">{event.feedback}% feedback</span>}
                   </div>
+                  {can('registrations') && (
+                    <Link href={`/dashboard/registrations?tab=events&group=${event.id}`} className="mt-4 inline-flex items-center gap-2 self-start text-sm font-semibold text-yellow-400 hover:text-yellow-300">
+                      <HiUsers className="w-4 h-4" /> View registrations
+                    </Link>
+                  )}
                 </div>
               </div>
             );

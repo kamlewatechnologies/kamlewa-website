@@ -20,8 +20,8 @@ import { createTrainingRegistration } from '@/lib/supabase/submissions';
 import Loader from '@/components/Loader';
 import toast from 'react-hot-toast';
 import { Link } from '@/i18n/routing';
-import { supabase } from '@/lib/supabase/supabaseClient';
 import { validateEmail } from '@/lib/validateEmail';
+import { isAlreadyRegistered } from '@/lib/supabase/registrationChecks';
 const GOOGLE_SHEETS_URL = process.env.NEXT_PUBLIC_GOOGLE_SHEETS_URL;
 
 function usesFapshi(title: string): boolean {
@@ -113,12 +113,7 @@ const handleRegisterSubmit = async (e: React.FormEvent) => {
   }
 
   // Check duplicate
-  const { data: existing } = await supabase
-    .from('training_registrations')
-    .select('id')
-    .eq('email', registerForm.email)
-    .eq('training_id', training.id)
-    .maybeSingle();
+  const existing = await isAlreadyRegistered('training', String(training.id), registerForm.email);
 
   if (existing) {
     toast.error('You have already registered for this training with this email.');
@@ -314,17 +309,17 @@ const handleRegisterSubmit = async (e: React.FormEvent) => {
           )}
         </AnimatePresence>
 
-        <PageBanner subheading="Professional Training" heading={training.title} imageUrl={training.image} />
+        <PageBanner subheading="Professional Training" heading={training.title} imageUrl={training.image} compactOnMobile />
 
-        <div className="max-w-7xl mx-auto px-6 md:px-12 lg:px-16 pt-8">
-          <Link href="/events-impact">
+        <div className="max-w-7xl mx-auto px-6 md:px-12 lg:px-16 md:pt-8">
+          <Link href="/events-impact" className="hidden md:inline-block">
             <Button variant="outline-white" className="mb-8"><HiArrowLeft className="w-5 h-5" />{tCommon('backToTrainings')}</Button>
           </Link>
         </div>
 
         <div className="max-w-7xl mx-auto px-6 md:px-12 lg:px-16 pb-16">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 space-y-8">
+            <div className="lg:col-span-2 space-y-8 order-2 lg:order-1">
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="relative h-64 md:h-96 overflow-hidden">
                 <Image src={training.image} alt={training.title} fill className="object-cover" unoptimized />
               </motion.div>
@@ -371,8 +366,8 @@ const handleRegisterSubmit = async (e: React.FormEvent) => {
               </motion.div>
             </div>
 
-            <div className="lg:col-span-1">
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="sticky top-24 space-y-6">
+            <div className="lg:col-span-1 order-1 lg:order-2">
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="lg:sticky lg:top-24 space-y-6">
                 <div className="bg-white/5 border border-white/10 p-6 space-y-6">
                   <h3 className="text-2xl font-bold" style={{ fontFamily: 'var(--font-nourd), sans-serif' }}>Training Details</h3>
                   <div className="space-y-4">

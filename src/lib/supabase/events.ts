@@ -70,10 +70,12 @@ export async function deleteEvent(id: string) {
 const EXTRA_REGISTRATION_FIELDS = ['profession', 'sex', 'organization', 'city'] as const;
 
 export async function registerForEvent(registration: EventRegistrationInsert) {
+  // No .select() after insert: the public may submit registrations but not
+  // read them back (see scripts/dashboard/03_registrations_access.sql).
   const insert = (row: EventRegistrationInsert) =>
-    supabase.from('event_registrations').insert(row).select().single();
+    supabase.from('event_registrations').insert(row);
 
-  let { data, error } = await insert(registration);
+  let { error } = await insert(registration);
 
   // If the profile columns haven't been added to the database yet
   // (scripts/add-event-registration-fields.sql), save the core registration
@@ -82,11 +84,10 @@ export async function registerForEvent(registration: EventRegistrationInsert) {
     console.warn('event_registrations is missing profile columns; run scripts/add-event-registration-fields.sql');
     const core = { ...registration };
     for (const field of EXTRA_REGISTRATION_FIELDS) delete core[field];
-    ({ data, error } = await insert(core));
+    ({ error } = await insert(core));
   }
 
   if (error) throw error;
-  return data as EventRegistration;
 }
 
 export async function getEventRegistrations(eventId: string) {

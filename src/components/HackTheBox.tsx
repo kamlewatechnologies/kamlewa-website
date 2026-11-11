@@ -7,9 +7,9 @@ import { HiX } from 'react-icons/hi';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslations } from 'next-intl';
 import { createCommunityApplication } from '@/lib/supabase/submissions';
-import { supabase } from '@/lib/supabase/supabaseClient';
 import toast from 'react-hot-toast';
 import { validateEmail } from '@/lib/validateEmail';
+import { isAlreadyRegistered } from '@/lib/supabase/registrationChecks';
 
 
 const GOOGLE_SHEETS_URL = process.env.NEXT_PUBLIC_GOOGLE_SHEETS_URL;
@@ -76,12 +76,7 @@ export default function HackTheBoxPage() {
   }
 
   //  Check duplicate
-  const { data: existing } = await supabase
-    .from('community_applications')
-    .select('id')
-    .eq('email', form.email)
-    .eq('community', 'HackTheBox') 
-    .maybeSingle();
+  const existing = await isAlreadyRegistered('community', 'HackTheBox', form.email);
 
   if (existing) {
     toast.error('You have already applied to this community with this email.');
@@ -193,7 +188,8 @@ export default function HackTheBoxPage() {
             <p className="text-[#9fef00] text-xs md:text-sm font-semibold uppercase tracking-wider mb-5">{tc('kamlewa')}</p>
             <h1 className="text-5xl md:text-6xl lg:text-7xl font-black text-white leading-[1.05]">{t('heroTitle')}</h1>
             <p className="text-[#9fef00] font-semibold mt-8 text-lg md:text-xl">{t('heroTagline')}</p>
-            <p className="text-gray-200 text-base md:text-lg leading-8 mt-6 max-w-2xl">{t('heroDescription')}</p>
+            <button type="button" onClick={() => setIsModalOpen(true)} className="md:hidden mt-6 w-full bg-[#9fef00] text-black font-bold px-8 py-3">{t('joinBtn')}</button>
+            <p className="text-gray-200 text-base md:text-lg leading-8 mt-6 max-w-2xl hidden md:block">{t('heroDescription')}</p>
           </div>
         </div>
       </div>

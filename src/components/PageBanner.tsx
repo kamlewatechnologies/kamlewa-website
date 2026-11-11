@@ -8,6 +8,8 @@ interface PageBannerProps {
   description?: string;
   imageUrl?: string;
   className?: string;
+  /** Shorter banner on phones (description hidden) so a form below shows sooner. */
+  compactOnMobile?: boolean;
 }
 
 export default function PageBanner({
@@ -16,6 +18,7 @@ export default function PageBanner({
   description,
   imageUrl = 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=2070',
   className = '',
+  compactOnMobile = false,
 }: PageBannerProps) {
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -41,7 +44,7 @@ export default function PageBanner({
   };
 
   return (
-    <section className={`relative mb-12 pt-20 md:pt-10 md:mb-16 overflow-hidden ${className}`}>
+    <section className={`relative ${compactOnMobile ? 'mb-4 pt-16' : 'mb-12 pt-20'} md:pt-10 md:mb-16 overflow-hidden ${className}`}>
       {/* Background Image with Overlay - Full Width */}
       <div className="absolute inset-0 z-0">
         <div 
@@ -55,7 +58,7 @@ export default function PageBanner({
       </div>
 
       {/* Content - Max Width Container */}
-      <div className="relative z-10 w-full max-w-7xl mx-auto px-6 md:px-12 lg:px-16 py-16 md:py-24">
+      <div className={`relative z-10 w-full max-w-7xl mx-auto px-6 md:px-12 lg:px-16 ${compactOnMobile ? 'py-8' : 'py-16'} md:py-24`}>
         <motion.div
           className="text-left"
           variants={containerVariants}
@@ -72,7 +75,7 @@ export default function PageBanner({
             </motion.p>
           )}
           <motion.h1
-            className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 text-white"
+            className={`${compactOnMobile ? 'text-3xl mb-2' : 'text-4xl mb-6'} md:text-5xl lg:text-6xl font-bold md:mb-6 text-white`}
             variants={itemVariants}
             style={{ fontFamily: 'var(--font-nourd), sans-serif' }}
           >
@@ -80,7 +83,7 @@ export default function PageBanner({
           </motion.h1>
           {description && (
             <motion.p
-              className="text-gray-300 text-base md:text-lg max-w-3xl"
+              className={`text-gray-300 text-base md:text-lg max-w-3xl ${compactOnMobile ? 'hidden md:block' : ''}`}
               variants={itemVariants}
             >
               {description}

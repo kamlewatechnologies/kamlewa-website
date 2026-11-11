@@ -10,6 +10,7 @@ import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
 import DashboardModal from '@/components/DashboardModal';
 import Loader from '@/components/Loader';
+import { Link } from '@/i18n/routing';
 
 interface User {
   id: string;
@@ -265,64 +266,25 @@ export default function SettingsPage() {
         )}
       </motion.div>
 
-      {/* User Management */}
+      {/* User Management lives on the Team & Roles page */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
-        className="bg-gradient-to-br from-white/5 to-white/[0.02] border border-white/10 rounded-lg p-6"
+        className="bg-gradient-to-br from-white/5 to-white/[0.02] border border-white/10 rounded-lg p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
       >
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-yellow-400/10 rounded-lg border border-yellow-400/20">
-              <HiUser className="w-6 h-6 text-yellow-400" />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold mb-1">User Management</h2>
-              <p className="text-gray-400 text-sm">Create and manage user accounts</p>
-            </div>
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-yellow-400/10 rounded-lg border border-yellow-400/20">
+            <HiUser className="w-6 h-6 text-yellow-400" />
           </div>
-          <Button
-            onClick={() => setIsModalOpen(true)}
-            variant="primary"
-            className="flex items-center gap-2"
-          >
-            <HiUser className="w-5 h-5" />
-            Add New User
-          </Button>
+          <div>
+            <h2 className="text-xl font-bold mb-1">Team members</h2>
+            <p className="text-gray-400 text-sm">Add people, give them roles and permissions on the Team &amp; Roles page.</p>
+          </div>
         </div>
-
-        <div className="space-y-3">
-          {users.length === 0 ? (
-            <div className="text-center py-8 text-gray-400">
-              <p>No users found. Create your first user above.</p>
-            </div>
-          ) : (
-            users.map((user) => (
-              <div
-                key={user.id}
-                className="flex items-center justify-between p-4 bg-black/30 border border-white/10 rounded-lg hover:border-white/20 transition-all"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-full bg-yellow-400/20 border border-yellow-400/30 flex items-center justify-center">
-                    <HiUser className="w-5 h-5 text-yellow-400" />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-white">{user.email}</p>
-                    <p className="text-xs text-gray-400">
-                      Created {new Date(user.created_at).toLocaleDateString()}
-                    </p>
-                  </div>
-                </div>
-                {user.id === currentUser?.id && (
-                  <span className="px-3 py-1 text-xs bg-yellow-400/20 text-yellow-400 border border-yellow-400/30 rounded">
-                    Current User
-                  </span>
-                )}
-              </div>
-            ))
-          )}
-        </div>
+        <Link href="/dashboard/team" className="inline-flex items-center justify-center px-4 py-2 bg-yellow-400 text-black font-semibold text-sm hover:bg-yellow-300">
+          Open Team &amp; Roles
+        </Link>
       </motion.div>
 
       {/* Create User Modal */}
