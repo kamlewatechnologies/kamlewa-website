@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from '@/i18n/routing';
 import toast from 'react-hot-toast';
-import { HiSearch, HiDownload, HiMail, HiTrash, HiCheckCircle, HiRefresh, HiChevronRight } from 'react-icons/hi';
+import { HiSearch, HiDownload, HiMail, HiTrash, HiCheckCircle, HiRefresh, HiChevronRight, HiChevronLeft } from 'react-icons/hi';
 import { supabase } from '@/lib/supabase/supabaseClient';
 import { useAccess } from '@/lib/access';
 import DashboardModal from '@/components/DashboardModal';
@@ -120,6 +120,8 @@ export default function RegistrationsPage() {
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Row | null>(null);
   const [notes, setNotes] = useState('');
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(25);
 
   const source = SOURCES[tab];
 
@@ -199,6 +201,15 @@ export default function RegistrationsPage() {
     });
   }, [rows, group, statusFilter, search, source]);
 
+  const pageCount = Math.max(1, Math.ceil(filtered.length / perPage));
+  const currentPage = Math.min(page, pageCount);
+  const pageRows = filtered.slice((currentPage - 1) * perPage, currentPage * perPage);
+  const firstShown = filtered.length ? (currentPage - 1) * perPage + 1 : 0;
+  const lastShown = Math.min(currentPage * perPage, filtered.length);
+
+  // Back to page 1 whenever the list changes
+  const resetPage = () => setPage(1);
+
   const statusCounts = useMemo(() => {
     const base = group && source.groupCol ? rows.filter((r) => str(r[source.groupCol!]) === group) : rows;
     const c: Record<string, number> = {};
@@ -208,6 +219,7 @@ export default function RegistrationsPage() {
 
   const switchTab = (k: SourceKey) => {
     setTab(k);
+    setPage(1);
     setGroup('');
     setStatusFilter('');
     setSearch('');
@@ -309,7 +321,7 @@ export default function RegistrationsPage() {
           <p className="text-3xl font-bold text-yellow-400">{statusCounts.total}</p>
         </div>
         {source.statuses.slice(0, tab === 'events' ? 2 : 3).map((s) => (
-          <button key={s} onClick={() => setStatusFilter(statusFilter === s ? '' : s)}
+          <button key={s} onClick={() => { setStatusFilter(statusFilter === s ? '' : s); resetPage(); }}
             className={`text-left border p-4 transition-colors ${statusFilter === s ? 'border-yellow-400/50 bg-yellow-400/10' : 'border-white/10 bg-white/5 hover:border-white/30'}`}>
             <p className="text-xs uppercase tracking-wide text-gray-400">{pretty(s)}</p>
             <p className="text-3xl font-bold">{statusCounts.byStatus[s] ?? 0}</p>
@@ -329,19 +341,19 @@ export default function RegistrationsPage() {
           <HiSearch className="w-4 h-4 text-white/50" />
           <input
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => { setSearch(e.target.value); resetPage(); }}
             placeholder="Search name, email, phone, organization…"
             className="flex-1 bg-transparent py-2.5 text-sm text-white placeholder-white/40 outline-none"
           />
         </div>
         {source.groupCol && (
-          <select aria-label="Filter" value={group} onChange={(e) => setGroup(e.target.value)}
+          <select aria-label="Filter" value={group} onChange={(e) => { setGroup(e.target.value); resetPage(); }}
             className="md:w-72 bg-black border border-white/15 px-3 py-2.5 text-sm text-white">
             <option value="">{source.groupLabel}</option>
             {groupOptions.map((g) => <option key={g.id} value={g.id}>{g.label} ({g.count})</option>)}
           </select>
         )}
-        <select aria-label="Status" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
+        <select aria-label="Status" value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); resetPage(); }}
           className="md:w-44 bg-black border border-white/15 px-3 py-2.5 text-sm text-white">
           <option value="">Any status</option>
           {source.statuses.map((s) => <option key={s} value={s}>{pretty(s)}</option>)}
@@ -357,7 +369,7 @@ export default function RegistrationsPage() {
         </div>
       ) : (
         <div className="border border-white/10 divide-y divide-white/10">
-          {filtered.map((r) => {
+          {pageRows.map((r) => {
             const status = str(r.status) || 'new';
             const groupName = source.groupCol ? (groupNames[str(r[source.groupCol])] || str(r.training_name) || str(r[source.groupCol])) : '';
             return (
@@ -391,6 +403,30 @@ export default function RegistrationsPage() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {!loading && filtered.length > 0 && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-sm text-gray-400">
+          <div className="flex items-center gap-2">
+            <label htmlFor="per-page">Rows per page</label>
+            <select id="per-page" value={perPage} onChange={(e) => { setPerPage(Number(e.target.value)); resetPage(); }}
+              className="bg-black border border-white/15 px-2 py-1.5 text-white">
+              {[10, 25, 50, 100].map((n) => <option key={n} value={n}>{n}</option>)}
+            </select>
+            <span className="ml-2">{firstShown}–{lastShown} of {filtered.length}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <button onClick={() => setPage(1)} disabled={currentPage === 1}
+              className="px-2.5 py-1.5 border border-white/15 hover:border-white/40 disabled:opacity-30 disabled:hover:border-white/15">First</button>
+            <button onClick={() => setPage(currentPage - 1)} disabled={currentPage === 1} aria-label="Previous page"
+              className="p-1.5 border border-white/15 hover:border-white/40 disabled:opacity-30 disabled:hover:border-white/15"><HiChevronLeft className="w-5 h-5" /></button>
+            <span className="px-3 text-white">Page {currentPage} of {pageCount}</span>
+            <button onClick={() => setPage(currentPage + 1)} disabled={currentPage === pageCount} aria-label="Next page"
+              className="p-1.5 border border-white/15 hover:border-white/40 disabled:opacity-30 disabled:hover:border-white/15"><HiChevronRight className="w-5 h-5" /></button>
+            <button onClick={() => setPage(pageCount)} disabled={currentPage === pageCount}
+              className="px-2.5 py-1.5 border border-white/15 hover:border-white/40 disabled:opacity-30 disabled:hover:border-white/15">Last</button>
+          </div>
         </div>
       )}
 
